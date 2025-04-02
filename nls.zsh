@@ -50,8 +50,7 @@ if ! grep -q "# NLS_WIDGET_CONFIG_START" ~/.zshrc 2>/dev/null; then
   {
     echo ""
     echo "# NLS_WIDGET_CONFIG_START"
-    echo "export NLS_TOKEN=\"$NLS_TOKEN\""
-    echo "source \"$script_path\""
+    echo "source \"$script_path\" ${NLS_TOKEN}"
     echo "# NLS_WIDGET_CONFIG_END"
   } >> ~/.zshrc
 fi
