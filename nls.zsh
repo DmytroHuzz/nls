@@ -45,14 +45,30 @@ modify_line() {
 zle -N modify_line
 bindkey '^T' modify_line
 
-# Ensure persistent config in ~/.zshrc
-if ! grep -q "# NLS_WIDGET_CONFIG_START" ~/.zshrc 2>/dev/null; then
+# Ensure persistent config in ~/.zshrc.
+# The persistent block is marked between:
+#   # NLS_WIDGET_CONFIG_START
+#   ...
+#   # NLS_WIDGET_CONFIG_END
+if grep -q "# NLS_WIDGET_CONFIG_START" ~/.zshrc 2>/dev/null; then
+  # Extract the current persistent configuration line containing the token.
+  existing_line=$(grep "source \"$script_path\"" ~/.zshrc)
+  # Assume the token is the third whitespace-separated field.
+  existing_token=$(echo "$existing_line" | awk '{print $3}')
+  if [[ "$existing_token" != "$NLS_TOKEN" ]]; then
+    # Only update if the token is different.
+    sed -i.bak "s|^source \"$script_path\" .*|source \"$script_path\" ${NLS_TOKEN}|" ~/.zshrc
+    echo -e "\e[33mPersistent config updated with new NLS token in ~/.zshrc.\e[0m"
+  fi
+else
+  # Append persistent configuration block if it doesn't exist.
   {
     echo ""
     echo "# NLS_WIDGET_CONFIG_START"
     echo "source \"$script_path\" ${NLS_TOKEN}"
     echo "# NLS_WIDGET_CONFIG_END"
   } >> ~/.zshrc
-  echo -e "\e[33mEnter a plain English command and press Ctrl+T to convert it to bash.\e[0m"
-fi
+  echo -e "\e[33mPersistent config added to ~/.zshrc.\e[0m"
+  echo -e "\e[33mEnter a plain English command and press Ctrl+T to convert it to shell command.\e[0m"
 
+fi
