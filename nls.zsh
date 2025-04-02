@@ -53,6 +53,6 @@ if ! grep -q "# NLS_WIDGET_CONFIG_START" ~/.zshrc 2>/dev/null; then
     echo "source \"$script_path\" ${NLS_TOKEN}"
     echo "# NLS_WIDGET_CONFIG_END"
   } >> ~/.zshrc
+  echo -e "\e[33mEnter a plain English command and press Ctrl+T to convert it to bash.\e[0m"
 fi
 
-echo -e "\e[33mEnter a plain English command and press Ctrl+T to convert it to bash.\e[0m"
