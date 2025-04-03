@@ -26,7 +26,7 @@ Choose the version of NLS that fits your environment:
 | **Shell Type**     | **Download Link**                                                 |
 |--------------------|-------------------------------------------------------------------|
 | Zsh                | [nls.zsh](https://github.com/DmytroHuzz/nls/blob/main/nls.zsh)    |
-| Bash              | *Coming soon*                                                     |
+| Bash               | [nls.sh](https://github.com/DmytroHuzz/nls/blob/main/nls.sh)      |
 | PowerShell         | *Coming soon*                                                     |
 
 ### Step 2: Execute the Script with Your API Token
