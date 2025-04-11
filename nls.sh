@@ -12,6 +12,12 @@ if [[ -z "$1" ]]; then
   return 1
 fi
 
+context_file=''
+if [ -n "$2" ] && [ -f "$2" ]; then
+  # If a second argument is provided and it's a file, source it.
+  context_file="$2"
+fi
+
 export NLS_TOKEN="$1"
 
 # Determine absolute path to this script
@@ -19,7 +25,7 @@ script_path="$(realpath "${BASH_SOURCE[0]}")"
 
 # Create a function that captures and replaces the command line.
 modify_line() {
-  local current_line="$READLINE_LINE"
+  local current_line="$(echo $READLINE_LINE | jq -Rs)"
   # Save the current command to history
   history -s "$current_line"
 
@@ -27,10 +33,16 @@ modify_line() {
 
   local os_name
   os_name="$(uname -o 2>/dev/null || uname -s)"
+
+  ocal context="\"\""
+  if [[ -f $context_file ]]; then
+    context=$(jq -Rs . < $context_file)
+  fi
+
   local response
   response=$(curl -s -H 'Content-Type: application/json' \
     -H "Authorization: Bearer $NLS_TOKEN" \
-    -d "{\"message\": \"${current_line}\", \"os\": \"${os_name}\", \"shell\": \"bash\"}" \
+    -d "{\"context\": ${context},\"message\": ${current_line}, \"os\": \"${os_name}\", \"shell\": \"bash\"}" \
     -X POST https://ofbydj6brd.execute-api.us-east-1.amazonaws.com/default/nls_lambda)
 
   if [[ -z "$response" ]]; then
@@ -46,25 +58,31 @@ modify_line() {
 # Register the function with Readline by binding Ctrl+T to it.
 bind -x '"\C-t": modify_line'
 
-# Ensure persistent config in ~/.bashrc.
+
+# Define the expected config block
+expected_block=$(cat <<EOF
+# NLS_WIDGET_CONFIG_START
+source "$script_path" $1 $2
+# NLS_WIDGET_CONFIG_END
+EOF
+)
+# Check if the config block exists
 if grep -q "# NLS_WIDGET_CONFIG_START" ~/.bashrc 2>/dev/null; then
   # Extract the current persistent configuration line containing the token.
-  existing_line=$(grep "source \"$script_path\"" ~/.bashrc)
-  # Assume the token is the third whitespace-separated field.
-  existing_token=$(echo "$existing_line" | awk '{print $3}')
-  if [[ "$existing_token" != "$NLS_TOKEN" ]]; then
-    # Only update if the token is different.
-    sed -i.bak "s|^source \"$script_path\" .*|source \"$script_path\" ${NLS_TOKEN}|" ~/.bashrc
+  existing_block=$(sed -n '/# NLS_WIDGET_CONFIG_START/,/# NLS_WIDGET_CONFIG_END/p' ~/.bashrc)
+  if [[ "$existing_block" != "$expected_block" ]]; then
+    # Remove the old block if it's different
+    sed -i '/# NLS_WIDGET_CONFIG_START/,/# NLS_WIDGET_CONFIG_END/d' ~/.bashrc
     echo -e "\e[33mPersistent config updated with new NLS token in ~/.bashrc.\e[0m"
   fi
-else
-  # Append persistent configuration block if it doesn't exist.
+fi
+
+# Add the block if it wasn't found or was just deleted
+if ! grep -q "# NLS_WIDGET_CONFIG_START" ~/.bashrc 2>/dev/null; then
   {
-    echo ""
-    echo "# NLS_WIDGET_CONFIG_START"
-    echo "source \"$script_path\" ${NLS_TOKEN}"
-    echo "# NLS_WIDGET_CONFIG_END"
+    echo "$expected_block"
   } >> ~/.bashrc
+
   echo -e "\e[33mPersistent config added to ~/.bashrc.\e[0m"
-  echo -e "\e[33mEnter a plain English command and press Ctrl+T to convert it to a shell command.\e[0m"
+  echo -e "\e[33mEnter a plain English command and press Ctrl+T to convert it to shell command.\e[0m"
 fi

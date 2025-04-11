@@ -56,7 +56,7 @@ Replace `{shell_type}` with `zsh`, `sh` or `ps1` as appropriate, and `{TOKEN}` w
 
 ❌ **How to Remove It**
 
-To remove the widget later, simply open your ~/.zshrc or ~/.shrc file and delete the lines between:
+To remove the widget later, simply open your ~/.zshrc or ~/.bashrc file and delete the lines between:
 ```bash
 # NLS_WIDGET_CONFIG_START
 ...

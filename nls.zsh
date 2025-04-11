@@ -25,22 +25,22 @@ script_path="$(realpath "$0")"
 
 # Create a widget that captures and replaces the command line.
 modify_line() {
-  local current_line="$BUFFER"
+  local current_line="$(echo $BUFFER | jq -Rs)"
   print -S "$current_line" # Save the command to history
 
   echo -e "\n\e[32mEnglish to Pinguish translation is on the way...\e[0m"
 
   local os_name="$(uname -o 2>/dev/null || uname -s)"
 
-  local context=""
-  if [[ -n context_file ]]; then
-    context=$(jq -Rs . < ${context_file})
+  local context="\"\""
+  if [[ -f context_file ]]; then
+    context=$(jq -Rs . < $context_file)
   fi
 
   local response
   response=$(curl -s -H 'Content-Type: application/json' \
     -H "Authorization: Bearer $NLS_TOKEN" \
-    -d "{\"context\": ${context}, \"message\": \"${current_line}\", \"os\": \"${os_name}\", \"shell\": \"zsh\"}" \
+    -d "{\"context\": ${context}, \"message\": ${current_line}, \"os\": \"${os_name}\", \"shell\": \"zsh\"}" \
     -X POST https://ofbydj6brd.execute-api.us-east-1.amazonaws.com/default/nls_lambda)
 
   if [[ -z "$response" ]]; then
