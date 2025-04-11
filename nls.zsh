@@ -12,6 +12,12 @@ if [[ -z "$1" ]]; then
   return 1
 fi
 
+context_file=''
+if [ -n "$2" ] && [ -f "$2" ]; then
+  # If a second argument is provided and it's a file, source it.
+  context_file="$2"
+fi
+
 export NLS_TOKEN="$1"
 
 # Determine absolute path to this script
@@ -25,10 +31,16 @@ modify_line() {
   echo -e "\n\e[32mEnglish to Pinguish translation is on the way...\e[0m"
 
   local os_name="$(uname -o 2>/dev/null || uname -s)"
+
+  local context=""
+  if [[ -n context_file ]]; then
+    context=$(jq -Rs . < ${context_file})
+  fi
+
   local response
   response=$(curl -s -H 'Content-Type: application/json' \
     -H "Authorization: Bearer $NLS_TOKEN" \
-    -d "{\"message\": \"${current_line}\", \"os\": \"${os_name}\", \"shell\": \"zsh\"}" \
+    -d "{\"context\": ${context}, \"message\": \"${current_line}\", \"os\": \"${os_name}\", \"shell\": \"zsh\"}" \
     -X POST https://ofbydj6brd.execute-api.us-east-1.amazonaws.com/default/nls_lambda)
 
   if [[ -z "$response" ]]; then
@@ -45,30 +57,32 @@ modify_line() {
 zle -N modify_line
 bindkey '^T' modify_line
 
-# Ensure persistent config in ~/.zshrc.
-# The persistent block is marked between:
-#   # NLS_WIDGET_CONFIG_START
-#   ...
-#   # NLS_WIDGET_CONFIG_END
+# Define the expected config block
+expected_block=$(cat <<EOF
+# NLS_WIDGET_CONFIG_START
+source "$script_path" $1 $2
+# NLS_WIDGET_CONFIG_END
+EOF
+)
+
+# Check if the config block exists
 if grep -q "# NLS_WIDGET_CONFIG_START" ~/.zshrc 2>/dev/null; then
-  # Extract the current persistent configuration line containing the token.
-  existing_line=$(grep "source \"$script_path\"" ~/.zshrc)
-  # Assume the token is the third whitespace-separated field.
-  existing_token=$(echo "$existing_line" | awk '{print $3}')
-  if [[ "$existing_token" != "$NLS_TOKEN" ]]; then
-    # Only update if the token is different.
-    sed -i.bak "s|^source \"$script_path\" .*|source \"$script_path\" ${NLS_TOKEN}|" ~/.zshrc
+  # Extract the existing block from the file
+  existing_block=$(sed -n '/# NLS_WIDGET_CONFIG_START/,/# NLS_WIDGET_CONFIG_END/p' ~/.zshrc)
+
+  if [[ "$existing_block" != "$expected_block" ]]; then
+    # Remove the old block if it's different
+    sed -i '' '/# NLS_WIDGET_CONFIG_START/,/# NLS_WIDGET_CONFIG_END/d' ~/.zshrc
     echo -e "\e[33mPersistent config updated with new NLS token in ~/.zshrc.\e[0m"
   fi
-else
-  # Append persistent configuration block if it doesn't exist.
+fi
+
+# Add the block if it wasn't found or was just deleted
+if ! grep -q "# NLS_WIDGET_CONFIG_START" ~/.zshrc 2>/dev/null; then
   {
-    echo ""
-    echo "# NLS_WIDGET_CONFIG_START"
-    echo "source \"$script_path\" ${NLS_TOKEN}"
-    echo "# NLS_WIDGET_CONFIG_END"
+    echo "$expected_block"
   } >> ~/.zshrc
+
   echo -e "\e[33mPersistent config added to ~/.zshrc.\e[0m"
   echo -e "\e[33mEnter a plain English command and press Ctrl+T to convert it to shell command.\e[0m"
-
 fi

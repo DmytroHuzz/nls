@@ -14,7 +14,9 @@ Have you ever wished you could simply tell your terminal what to do instead of m
 - 🌐 **Public API Integration:** Leverages the paid OpenAI API to generate commands.
 - 🔑 **Free API Tokens:** I personally fund free tokens with limited usage (updated periodically). Contact me for a dedicated token.
 - 💻 **OS & Shell Detection:** Automatically identifies your operating system and shell type for optimized command suggestions.
-- 📌 **Persistent Setup:** Auto-installs to your `~/.zshrc` for convenience; remove by deleting the marked configuration block.
+- 📌 **Persistent Setup:** Automatically adds itself to your shell’s configuration file (e.g. `~/.bashrc`, `~/.zshrc`, or `~/.profile`) for convenience; remove by deleting the marked configuration block.
+- 📄 **Project Context Integration:** Optionally include a context file (absolute path) containing project-specific command documentation, which enriches the AI prompt to generate commands tailored to your project's conventions.
+
 
 
 ## Installation
@@ -42,10 +44,10 @@ For community use, here are a few example tokens with limited usage (subject to 
 After downloading the script, run it from your terminal by executing:
 
 ```bash
-. ./nls.{shell_type} {TOKEN}
+. ./nls.{shell_type} {TOKEN} {CONTEXT_FILE}
 ```
 
-Replace `{shell_type}` with `zsh`, `sh` or `ps1` as appropriate, and `{TOKEN}` with one of the provided API tokens (see above) or your own individual key if you have one.
+Replace `{shell_type}` with `zsh`, `sh` or `ps1` as appropriate, and `{TOKEN}` with one of the provided API tokens (see above) or your own individual key if you have one. `{CONTEXT_FILE}` (optional): Provide the absolute path to a documentation file that contains project-specific command definitions. When supplied, the contents of this file are appended as additional context to the AI prompt, enabling it to generate commands tailored to your project's requirements.
 
 **Once sourced, the script will:**
 
@@ -54,7 +56,7 @@ Replace `{shell_type}` with `zsh`, `sh` or `ps1` as appropriate, and `{TOKEN}` w
 
 ❌ **How to Remove It**
 
-To remove the widget later, simply open your ~/.zshrc file and delete the lines between:
+To remove the widget later, simply open your ~/.zshrc or ~/.shrc file and delete the lines between:
 ```bash
 # NLS_WIDGET_CONFIG_START
 ...
