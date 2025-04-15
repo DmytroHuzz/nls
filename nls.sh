@@ -34,7 +34,7 @@ modify_line() {
   local os_name
   os_name="$(uname -o 2>/dev/null || uname -s)"
 
-  ocal context="\"\""
+  local context="\"\""
   if [[ -f $context_file ]]; then
     context=$(jq -Rs . < $context_file)
   fi
