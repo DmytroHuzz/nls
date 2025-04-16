@@ -26,7 +26,7 @@ script_path="$(realpath "$0")"
 # Create a widget that captures and replaces the command line.
 modify_line() {
   local current_line="$(echo $BUFFER | jq -Rs)"
-  print -S "$current_line" # Save the command to history
+  print -S $BUFFER # Save the command to history
 
   echo -e "\n\e[32mEnglish to Pinguish translation is on the way...\e[0m"
 

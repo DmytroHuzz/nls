@@ -27,7 +27,7 @@ script_path="$(realpath "${BASH_SOURCE[0]}")"
 modify_line() {
   local current_line="$(echo $READLINE_LINE | jq -Rs)"
   # Save the current command to history
-  history -s "$current_line"
+  history -s $READLINE_LINE
 
   echo -e "\n\e[32mEnglish to Pinguish translation is on the way...\e[0m"
 
