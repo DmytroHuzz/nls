@@ -25,35 +25,55 @@ script_path="$(realpath "$0")"
 
 # Create a widget that captures and replaces the command line.
 modify_line() {
-  local current_line="$(echo $BUFFER | jq -Rs)"
-  print -S $BUFFER # Save the command to history
+  setopt localoptions NOMONITOR
+  # Save the current buffer and command history
+  print -S $BUFFER
+  # Escape the full line for JSON
+  local current_line
+  current_line=$(echo $BUFFER | jq -Rs)
 
-  echo -e "\n\e[32mEnglish to Pinguish translation is on the way...\e[0m"
+  # Inform the user and set up output via the real terminal
+  # Prepare a temporary file for the API response
+  local tmpfile
+  tmpfile=$(mktemp /tmp/nls.XXXXXX) || { echo "Error: Cannot create temp file" >/dev/tty; return 1; }
 
-  local os_name="$(uname -o 2>/dev/null || uname -s)"
-
-  local context="\"\""
-  if [[ -f context_file ]]; then
-    context=$(jq -Rs . < $context_file)
-  fi
-
-  local response
-  response=$(curl -s -H 'Content-Type: application/json' \
+  # Fire off the API call in the background
+  curl -sS -H 'Content-Type: application/json' \
     -H "Authorization: Bearer $NLS_TOKEN" \
-    -d "{\"context\": ${context}, \"message\": ${current_line}, \"os\": \"${os_name}\", \"shell\": \"zsh\"}" \
-    -X POST https://ofbydj6brd.execute-api.us-east-1.amazonaws.com/default/nls_lambda)
+    -d "{\"context\":${context:-\"\"},\"message\":${current_line},\"os\":\"$(uname -s)\",\"shell\":\"zsh\"}" \
+    -X POST https://ofbydj6brd.execute-api.us-east-1.amazonaws.com/default/nls_lambda \
+    >"$tmpfile" 2>/dev/null &
+  local pid=$!
+
+  # Spinner loop on the real terminal
+  local spin_chars=('|' '/' '-' '\')
+  while kill -0 $pid 2>/dev/null; do
+    for c in "${spin_chars[@]}"; do
+      printf "\r\e[32m  English to Pinguish translation is on the way... \e[0m%s" "$c" >/dev/tty
+      sleep 0.1
+      printf "\r \r" >/dev/tty
+    done
+  done
+  wait $pid
+
+  # Clean up spinner line
+  # printf "\r \r" >/dev/tty
+
+  # Read and remove the temp file
+  local response
+  response=$(<"$tmpfile")
+  rm -f "$tmpfile"
 
   if [[ -z "$response" ]]; then
-    echo -e "\e[31mError: No response from the API.\e[0m"
+    echo -e "\e[31mError: No response from the API.\e[0m" >/dev/tty
     return 1
   fi
 
-  BUFFER="$response"
+  # Replace buffer and redisplay
+  BUFFER=$response
   CURSOR=${#BUFFER}
   zle redisplay
 }
-
-# Register the function as a ZLE widget.
 zle -N modify_line
 bindkey '^T' modify_line
 
