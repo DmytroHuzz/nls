@@ -1,0 +1,1 @@
+bats ./tests/test_nls.bash
