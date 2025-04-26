@@ -32,6 +32,10 @@ modify_line() {
   local current_line
   current_line=$(echo $BUFFER | jq -Rs)
 
+  local context="\"\""
+  if [[ -f $context_file ]]; then
+    context=$(jq -Rs . < $context_file)
+  fi
   # Inform the user and set up output via the real terminal
   # Prepare a temporary file for the API response
   local tmpfile
@@ -40,7 +44,7 @@ modify_line() {
   # Fire off the API call in the background
   curl -sS -H 'Content-Type: application/json' \
     -H "Authorization: Bearer $NLS_TOKEN" \
-    -d "{\"context\":${context:-\"\"},\"message\":${current_line},\"os\":\"$(uname -s)\",\"shell\":\"zsh\"}" \
+    -d "{\"context\":${context},\"message\":${current_line},\"os\":\"$(uname -s)\",\"shell\":\"zsh\"}" \
     -X POST https://ofbydj6brd.execute-api.us-east-1.amazonaws.com/default/nls_lambda \
     >"$tmpfile" 2>/dev/null &
   local pid=$!
@@ -51,13 +55,11 @@ modify_line() {
     for c in "${spin_chars[@]}"; do
       printf "\r\e[32m  English to Pinguish translation is on the way... \e[0m%s" "$c" >/dev/tty
       sleep 0.1
-      printf "\r \r" >/dev/tty
     done
   done
-  wait $pid
+  printf "\r \r\e[K" >/dev/tty
 
-  # Clean up spinner line
-  # printf "\r \r" >/dev/tty
+  wait $pid
 
   # Read and remove the temp file
   local response
@@ -68,7 +70,6 @@ modify_line() {
     echo -e "\e[31mError: No response from the API.\e[0m" >/dev/tty
     return 1
   fi
-
   # Replace buffer and redisplay
   BUFFER=$response
   CURSOR=${#BUFFER}
